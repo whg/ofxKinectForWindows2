@@ -101,6 +101,11 @@ namespace ofxKinectForWindows2 {
 	}
 
 	//----------
+	shared_ptr<Source::Face> Device::initFaceSource() {
+		return this->initSource<Source::Face>();
+	}
+
+	//----------
 	void Device::update() {
 		this->isFrameNewFlag = false;
 		for(auto source : this->sources) {
@@ -147,6 +152,11 @@ namespace ofxKinectForWindows2 {
 	//----------
 	shared_ptr<Source::Body> Device::getBodySource() {
 		return this->getSource<Source::Body>();
+	}
+	
+	//----------
+	shared_ptr<Source::Face> Device::getFaceSource() {
+		return this->getSource<Source::Face>();
 	}
 
 	//----------
