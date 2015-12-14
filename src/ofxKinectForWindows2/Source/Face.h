@@ -17,9 +17,14 @@ namespace ofxKinectForWindows2 {
 
 			void update();
 
+			ofMesh& getObjectMesh();
 
 			ofMesh imageMesh;
 			vector<ofVec2f> imagePoints;
+			vector<ofVec3f> objectPoints;
+			ofVec3f origin;
+			ofQuaternion orientation;
+			ofMesh objectMesh;
 
 		protected:
 			IHighDefinitionFaceFrameSource* faceSource[BODY_COUNT];

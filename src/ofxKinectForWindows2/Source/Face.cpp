@@ -51,6 +51,7 @@ namespace ofxKinectForWindows2 {
 
 				GetFaceModelVertexCount(&numVertices); // should be 1347
 				imagePoints.resize(numVertices);
+				objectPoints.resize(numVertices);
 			}
 			catch (std::exception &e) {
 				for (int count = 0; count < BODY_COUNT; count++) {
@@ -122,8 +123,21 @@ namespace ofxKinectForWindows2 {
 						this->coordinateMapper->MapCameraPointToColorSpace(vert, &onImageVertex);
 						imagePoints[k].x = onImageVertex.X; 
 						imagePoints[k].y = onImageVertex.Y;
+						objectPoints[k].x = vert.X;
+						objectPoints[k].y = vert.Y;
+						objectPoints[k].z = vert.Z;
 						k++;
 					}
+
+					CameraSpacePoint o;
+					faceAlignment[count]->get_HeadPivotPoint(&o);
+					origin = ofVec3f(o.X, o.Y, o.Z);
+
+					Vector4 fr;
+					faceAlignment[count]->get_FaceOrientation(&fr);
+					orientation = ofQuaternion(fr.x, fr.y, fr.z, fr.w);
+
+
 					SafeRelease(faceFrame);
 				}
 			}
@@ -131,6 +145,82 @@ namespace ofxKinectForWindows2 {
 				OFXKINECTFORWINDOWS2_ERROR << e.what();
 			}
 
+		}
+
+		ofMesh& Face::getObjectMesh() {
+			
+			ofVec3f eulerFaceRotation = orientation.getEuler();
+			float yaw = eulerFaceRotation.x;
+			float pitch = eulerFaceRotation.y;
+			float roll = eulerFaceRotation.z;
+
+			auto op1 = objectPoints[HighDetailFacePoints::HighDetailFacePoints_NoseTip];
+			auto op2 = objectPoints[HighDetailFacePoints::HighDetailFacePoints_ForeheadCenter];
+
+			op1 -= origin; op2 -= origin;
+			op1.rotate(-yaw, -pitch, -roll);
+			op2.rotate(-yaw, -pitch, -roll);
+			op1 += origin; op2 += origin;
+
+			CameraSpacePoint kp1{ op1.x, op1.y, op1.z };
+			CameraSpacePoint kp2{ op2.x, op2.y, op2.z };
+
+			ColorSpacePoint cp1, cp2;
+			coordinateMapper->MapCameraPointToColorSpace(kp1, &cp1);
+			coordinateMapper->MapCameraPointToColorSpace(kp2, &cp2);
+
+			op1.z = 0; op2.z = 0;
+			ofVec3f ocp1(cp1.X, cp1.Y);
+			ofVec3f ocp2(cp2.X, cp2.Y);
+
+			auto baseRatio = (ocp1 - ocp2).length() / (op1 - op2).length();
+
+			ColorSpacePoint cameraOrigin;
+			CameraSpacePoint csorigin{ origin.x, origin.y, origin.z };
+			coordinateMapper->MapCameraPointToColorSpace(csorigin, &cameraOrigin);
+
+			auto scaleAdjustment = 0.0;
+			auto renderer = ofGetCurrentRenderer();
+			auto transform = renderer->getCurrentMatrix(OF_MATRIX_MODELVIEW) * renderer->getCurrentMatrix(OF_MATRIX_PROJECTION);
+
+
+			objectMesh.clear();
+			auto calculatedScale = false;
+			for (auto &vertex : objectPoints) {
+
+				auto p = vertex - origin;
+				p.rotate(0, 180, 180);
+				int d = 1.0f;
+
+				if (!calculatedScale) {
+					ofVec2f reference = imagePoints[0];
+					float mind = FLT_MAX;
+
+					for (float q = 0.9; q < 1.01; q += 0.01) {
+						ofVec3f temp(p);
+						temp *= baseRatio * q;
+						temp += ofVec3f(cameraOrigin.X, cameraOrigin.Y);
+						ofVec4f v4(temp.x, temp.y, temp.z, 1.0);
+						auto projected = temp * transform;
+
+						projected.x = (projected.x + 1.0f) / 2.0f * ofGetWidth();
+						projected.y = (1.0f - projected.y) / 2.0f * ofGetHeight();
+
+						auto dist = reference.distance(ofVec2f(projected.x, projected.y));
+						if (dist < mind) {
+							mind = dist;
+							scaleAdjustment = q;
+						}
+					}
+					calculatedScale = true;
+				}
+				//scale_adjustment = ofMap(mouseX, 0, ofGetWidth(), 0.9, 1.1);
+				p *= baseRatio * scaleAdjustment;
+				p += ofVec3f(cameraOrigin.X, cameraOrigin.Y);
+				objectMesh.addVertex(p);
+
+			}
+			return objectMesh;
 		}
 
 	} // end namespace Source
