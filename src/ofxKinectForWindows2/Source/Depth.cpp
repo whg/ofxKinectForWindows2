@@ -49,6 +49,12 @@ namespace ofxKinectForWindows2 {
 			}
 		}
 
+		void Depth::update() {
+			BaseImageSimple::update();
+			colorToWorldCacheDirty = true;
+			depthToWorldCacheDirty = true;
+		}
+
 		//----------
 		ofMesh Depth::getMesh(const PointCloudOptions &opts) {
 			const int width = this->getWidth();
@@ -136,19 +142,28 @@ namespace ofxKinectForWindows2 {
 		}
 
 		//----------
-		ofFloatPixels Depth::getColorToWorldMap(int colorImageWidth, int colorImageHeight) const {
-			ofFloatPixels colorToWorldMap;
-			colorToWorldMap.allocate(colorImageWidth, colorImageHeight, ofPixelFormat::OF_PIXELS_RGB);
-			this->coordinateMapper->MapColorFrameToCameraSpace(this->pixels.getWidth() * this->pixels.getHeight(), this->pixels.getPixels(), colorImageWidth * colorImageHeight, (CameraSpacePoint*)colorToWorldMap.getPixels());
+		ofFloatPixels& Depth::getColorToWorldMap(int colorImageWidth, int colorImageHeight) {
+			if (colorToWorldMap.getWidth() != colorImageWidth) {
+				colorToWorldMap.allocate(colorImageWidth, colorImageHeight, ofPixelFormat::OF_PIXELS_RGB);
+			}
+			if (colorToWorldCacheDirty) {
+				this->coordinateMapper->MapColorFrameToCameraSpace(this->pixels.getWidth() * this->pixels.getHeight(), this->pixels.getPixels(), colorImageWidth * colorImageHeight, (CameraSpacePoint*)colorToWorldMap.getPixels());
+				colorToWorldCacheDirty = false;
+			}
 			return colorToWorldMap;
 		}
 
 		//----------
-		ofFloatPixels Depth::getDepthToWorldMap() const {
-			ofFloatPixels depthToWorldMap;
-			depthToWorldMap.allocate(this->getWidth(), this->getHeight(), ofPixelFormat::OF_PIXELS_RGB);
-			this->coordinateMapper->MapColorFrameToCameraSpace(this->pixels.getWidth() * this->pixels.getHeight(), this->pixels.getPixels(), depthToWorldMap.getWidth() * depthToWorldMap.getHeight(), (CameraSpacePoint*)depthToWorldMap.getPixels());
+		ofFloatPixels& Depth::getDepthToWorldMap() {
+			if (depthToWorldMap.getWidth() != getWidth()) {
+				depthToWorldMap.allocate(getWidth(), getHeight(), ofPixelFormat::OF_PIXELS_RGB);
+			}
+			if (depthToWorldCacheDirty) {
+				this->coordinateMapper->MapDepthFrameToCameraSpace(this->pixels.getWidth() * this->pixels.getHeight(), this->pixels.getPixels(), depthToWorldMap.getWidth() * depthToWorldMap.getHeight(), (CameraSpacePoint*)depthToWorldMap.getPixels());
+				depthToWorldCacheDirty = false;
+			}
 			return depthToWorldMap;
+
 		}
 	}
 }

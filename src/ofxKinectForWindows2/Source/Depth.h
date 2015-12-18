@@ -24,15 +24,19 @@ namespace ofxKinectForWindows2 {
 
 			string getTypeName() const override;
 			void init(IKinectSensor *) override;
+			void update() override;
 
 			ofMesh getMesh(const PointCloudOptions & pointCloudOptions = PointCloudOptions());
 			ofMesh getMesh(bool stitchFaces, PointCloudOptions::TextureCoordinates textureCoordinates);
 			ofVbo getVbo(const PointCloudOptions & pointCloudOptions = PointCloudOptions());
 
-			ofFloatPixels getColorToWorldMap(int colorImageWidth = 1920, int colorImageHeight = 1080) const;
-			ofFloatPixels getDepthToWorldMap() const;
+			ofFloatPixels& getColorToWorldMap(int colorImageWidth = 1920, int colorImageHeight = 1080);
+			ofFloatPixels& getDepthToWorldMap();
 		protected:
 			ICoordinateMapper * coordinateMapper;
+			ofFloatPixels colorToWorldMap, depthToWorldMap;
+			bool colorToWorldCacheDirty, depthToWorldCacheDirty;
+
 		};
 	}
 }
