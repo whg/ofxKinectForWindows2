@@ -7,6 +7,9 @@
 #include "ofPixels.h"
 #include "ofTexture.h"
 
+#include "Depth.h"
+
+
 namespace ofxKinectForWindows2 {
 	namespace Source {
 		class Color : public BaseImage<unsigned char, IColorFrameReader, IColorFrame> {
@@ -21,12 +24,19 @@ namespace ofxKinectForWindows2 {
 			long int getFrameInterval() const;
 			float getGain() const;
 			float getGamma() const;
+
+			ofPixels& getRegisteredPixels(shared_ptr<Depth> depth);
+
 		protected:
 			TIMESPAN exposure;
 			TIMESPAN frameInterval;
 			float gain;
 			float gamma;
 			bool  isFrameNewFlag;
+
+			ICoordinateMapper *coordinateMapper;
+			ofPixels registeredPixels;
+			bool registeredCacheDirty;
 		};
 	}
 }

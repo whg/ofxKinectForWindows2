@@ -1,6 +1,7 @@
 #include "Color.h"
 #include "ofMain.h"
 
+
 #define CHECK_OPEN if(!this->reader) { OFXKINECTFORWINDOWS2_ERROR << "Failed : Reader is not open"; }
 
 namespace ofxKinectForWindows2 {
@@ -34,6 +35,12 @@ namespace ofxKinectForWindows2 {
 				}
 
 				SafeRelease(source);
+
+				if (FAILED(sensor->get_CoordinateMapper(&this->coordinateMapper))) {
+					throw(Exception("Failed to acquire coordinate mapper"));
+				}
+
+
 			} catch (std::exception & e) {
 				SafeRelease(this->reader);
 				throw (e);
@@ -72,6 +79,8 @@ namespace ofxKinectForWindows2 {
 				if (FAILED(frame->CopyConvertedFrameDataToArray(this->pixels.size(), this->pixels.getPixels(), ColorImageFormat_Rgba))) {
 					throw Exception("Couldn't pull pixel buffer");
 				}
+				registeredCacheDirty = true;
+
 				if (this->useTexture) {
 					this->texture.loadData(this->pixels);
 				}
@@ -100,6 +109,7 @@ namespace ofxKinectForWindows2 {
 			}
 			SafeRelease(frameDescription);
 			SafeRelease(frame);
+
 		}
 
 		//----------
@@ -125,6 +135,46 @@ namespace ofxKinectForWindows2 {
 		//----------
 		float Color::getGamma() const {
 			return this->gamma;
+		}
+
+		ofPixels& Color::getRegisteredPixels(shared_ptr<Depth> depth) {
+			if (registeredPixels.getWidth() != 512) {
+				registeredPixels.allocate(512, 424, ofPixelFormat::OF_PIXELS_RGB);
+			}
+
+			if (registeredCacheDirty) {
+
+				ColorSpacePoint *depth2rgb = new ColorSpacePoint[512 * 424];
+
+				auto len = registeredPixels.getWidth() * registeredPixels.getHeight();
+				coordinateMapper->MapDepthFrameToColorSpace(len, depth->getPixels(), len, depth2rgb);
+
+				auto *pix = pixels.getData();
+				auto *rpix = registeredPixels.getData();
+				int rpixi, pixi;
+				ColorSpacePoint csp;
+
+				for (int i = 0; i < len; i++) {
+					csp = depth2rgb[i];
+					rpixi = i * 3;
+					if (csp.X < 0 || csp.Y < 0 || csp.X >= pixels.getWidth() || csp.Y >= pixels.getHeight()) {
+						for (int j = 0; j < 3; j++) {
+							rpix[rpixi + j] = 0;
+						}
+					}
+					else {
+						pixi = (int(csp.X) + pixels.getWidth() * int(csp.Y)) * 4;
+						for (int j = 0; j < 3; j++) {
+							rpix[rpixi + j] = pix[pixi + j];
+ 						}
+					}
+
+				}
+				delete[] depth2rgb;
+				registeredCacheDirty = false;
+
+			}
+			return registeredPixels;
 		}
 	}
 }
