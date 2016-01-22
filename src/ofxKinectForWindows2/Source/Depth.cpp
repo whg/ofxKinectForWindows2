@@ -154,13 +154,35 @@ namespace ofxKinectForWindows2 {
 		}
 
 		//----------
-		ofFloatPixels& Depth::getDepthToWorldMap() {
+		ofFloatPixels& Depth::getDepthToWorldMap(bool smooth) {
 			if (depthToWorldMap.getWidth() != getWidth()) {
 				depthToWorldMap.allocate(getWidth(), getHeight(), ofPixelFormat::OF_PIXELS_RGB);
 			}
 			if (depthToWorldCacheDirty) {
 				this->coordinateMapper->MapDepthFrameToCameraSpace(this->pixels.getWidth() * this->pixels.getHeight(), this->pixels.getPixels(), depthToWorldMap.getWidth() * depthToWorldMap.getHeight(), (CameraSpacePoint*)depthToWorldMap.getPixels());
 				depthToWorldCacheDirty = false;
+
+				if (smooth) {
+					// find bad pixels and backtrack trying to find a good one.
+					// left hand edges may look weird
+					int d = depthToWorldMap.getWidth() * depthToWorldMap.getHeight() * 3;
+					auto *data = depthToWorldMap.getData();
+					for (int i = 0; i < d; i += 3) {
+						auto &z = data[i + 2];
+						if (z <= 0) {
+							for (int j = i - 3; j > 0; j -= 3) {
+								auto &nz = data[j + 2];
+								if (nz > 0) {
+									z = nz;
+									data[i] = data[j];
+									data[i + 1] = data[j + 1];
+									break;
+								}
+							}
+						}
+
+					}
+				}
 			}
 			return depthToWorldMap;
 

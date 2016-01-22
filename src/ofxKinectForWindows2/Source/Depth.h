@@ -31,7 +31,7 @@ namespace ofxKinectForWindows2 {
 			ofVbo getVbo(const PointCloudOptions & pointCloudOptions = PointCloudOptions());
 
 			ofFloatPixels& getColorToWorldMap(int colorImageWidth = 1920, int colorImageHeight = 1080);
-			ofFloatPixels& getDepthToWorldMap();
+			ofFloatPixels& getDepthToWorldMap(bool smooth=false);
 		protected:
 			ICoordinateMapper * coordinateMapper;
 			ofFloatPixels colorToWorldMap, depthToWorldMap;
